@@ -89,26 +89,34 @@ const parse = urls => {
     })
     .then(async browser => {
       const tab = await browser.newPage()
-      await tab.emulate(devices['iPhone 6 Plus'])
+      // await tab.emulate(devices['iPhone 6 Plus'])
       for (let i = 0; i < urls.length; i++) {
         await tab.goto(urls[i], { waitUntil: 'networkidle' })
         let article = await tab.evaluate(() => {
+          
           let autorFecha = Array.from(document.querySelectorAll('.voc-author-info'))[0].children
           let fecha = Array.from(autorFecha).filter(e => e.tagName === 'TIME')[0].innerText.trim()
           let date = moment(fecha, 'MMMM Do YYYY, h:mm:ss')
           let autor = Array.from(autorFecha).filter(e => e.tagName === 'AUTHOR')[0].innerText
 
           let heading = Array.from(document.querySelectorAll('.voc-detail-header'))[0].children
-          let titular = Array.from(heading).filter(e => e.tagName === 'H1').map(e => e.innerText).toString()
-          let subtitulo = Array.from(heading).filter(e => e.tagName === 'H2').map(e => e.innerText).toString()
-          let img = Array.from(Array.from(heading).filter(e => e.tagName === 'FIGURE')[0].children).filter(c => c.tagName === 'DIV')[0].children[0].currentSrc
+          let titular = Array.from(heading).filter(e => e.tagName === 'H1')
+            .map(e => e.innerText).toString()
+          let subtitulo = Array.from(heading).filter(e => e.tagName === 'H2')
+            .map(e => e.innerText).toString()
+          let img = Array.from(Array.from(heading).filter(e => e.tagName === 'FIGURE')[0].children)
+            .filter(c => c.tagName === 'DIV')[0].children[0].currentSrc
 
-          let htmlParagraphs = Array.from(document.querySelectorAll('div.voc-detail')).map(d => d.getElementsByTagName('p'))[0]
-          let text = Array.from(htmlParagraphs).map(p => p.innerText).join('\n').toString()
+          let htmlParagraphs = Array.from(document.querySelectorAll('div.voc-detail'))
+            .map(d => d.getElementsByTagName('p'))[0]
+          let text = Array.from(htmlParagraphs)
+            .map(p => p.innerText).join('\n').toString()
 
-          let tagsArray = Array.from(Array.from(document.querySelectorAll('.voc-topics'))[0].children).filter(e => e.tagName !== 'H3').map(a => a.innerText)
+          let tagsArray = Array.from(Array.from(document.querySelectorAll('.voc-topics'))[0].children)
+            .filter(e => e.tagName !== 'H3')
+            .map(a => a.innerText)
 
-          // TODO: return serialized object as JSON and save it to MongoDB
+          // TODO: serialize object as json, return it and persist it to the database (using await?)
         })
       }
     })
