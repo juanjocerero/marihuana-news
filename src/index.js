@@ -117,6 +117,16 @@ const parse = urls => {
             .map(a => a.innerText)
 
           // TODO: serialize object as json, return it and persist it to the database (using await?)
+          articles.push({
+            fecha: fecha,
+            date: date,
+            autor: autor,
+            titular: titular,
+            subtitulo: subtitulo,
+            img: img,
+            text: text,
+            tags: tagsArray
+          })
         })
       }
     })
