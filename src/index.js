@@ -128,6 +128,8 @@ const parse = urls => {
             tags: tagsArray
           })
         })
+        // TODO: check if this works
+        // return Promise.resolve(JSON.stringify(articles))
       }
     })
   } catch (error) {
