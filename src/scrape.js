@@ -1,3 +1,9 @@
+/* 
+http://www.ideal.es/sociedad/falta-lluvia-olor-20171017095518-nt.html
+http://www.ideal.es/granada/201607/18/inadmisible-servicio-sabotajes-terceros-20160715020718-v.html
+http://www.ideal.es/granada/v/20100611/cultura/miguel-rios-quiere-rolling-20100611.html
+*/
+
 /* eslint-disable no-console */
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
@@ -8,6 +14,9 @@ import _ from 'lodash'
 import moment from 'moment'
 import mongoose from 'mongoose'
 import titleCase from 'title-case'
+import stringify from 'csv-stringify'
+import path from 'path'
+import * as fs from 'fs'
 
 import Article from './models/article'
 
@@ -35,7 +44,8 @@ const getPages = () => {
   return new Promise((resolve, reject) => {
     puppeteer.launch({
       ignoreHTTPSErrors: true,
-      headless: true
+      headless: true,
+      timeout: 60000
     }).then(async browser => {
       const page = await browser.newPage()
       await page.emulate(devices['iPhone 6 Plus'])
@@ -54,10 +64,12 @@ const getPages = () => {
 const getNewsUrls = pages => {
   try {
     return new Promise((resolve, reject) => {
+      console.log(`${pages.length} pages`)
       let allUrls = []
       puppeteer.launch({
         ignoreHTTPSErrors: true,
-        headless: true
+        headless: true,
+        timeout: 60000
       })
         .then(async browser => {
           const tab = await browser.newPage()
@@ -79,13 +91,13 @@ const getNewsUrls = pages => {
             await JSON.parse(articleUrls).forEach(url => allUrls.push(url))
             console.log(`${allUrls.length} urls gathered`)
           }
-          resolve(allUrls)
+          resolve(_.uniqBy(allUrls, JSON.stringify))
           await tab.close()
           await browser.close()
         })
     })
   } catch (error) {
-    throw new Error(error)
+    console.error(`Error getting urls: ${error}`)
   }
   
 }
@@ -96,44 +108,158 @@ const parse = urls => {
     return new Promise((resolve, reject) => {
       puppeteer.launch({
         ignoreHTTPSErrors: true,
-        headless: false,
+        headless: true,
         timeout: 60000
       })
         .then(async browser => {
           const tab = await browser.newPage()
           // await tab.emulate(devices['iPhone 6 Plus'])
           for (let i = 0; i < urls.length; i++) {
-            await tab.goto(urls[i], { waitUntil: 'load' })
-            await tab.waitForSelector('.voc-aside-margin')
+            try {
+              console.log(`scraping ${urls[i]}`)
+              await tab.goto(urls[i], { waitUntil: 'load' })
+              // await tab.waitForSelector('.voc-aside-margin')
+            } catch (error) {
+              console.error(`Couldn't load URL: ${urls[i]}`)
+            }
+
             let article = await tab.evaluate(() => {
-              
-              let autorFecha = Array.from(document.querySelectorAll('.voc-author-info'))[0].children
-              let heading = Array.from(document.querySelectorAll('.voc-detail-header'))[0].children
-              let htmlParagraphs = Array.from(document.querySelectorAll('div.voc-detail')).map(d => d.getElementsByTagName('p'))[0]
-              
-              return {
-                fecha: Array.from(autorFecha)
-                  .filter(e => e.tagName === 'TIME')[0].innerText.trim(),
-                autor: Array.from(autorFecha)
-                  .filter(e => e.tagName === 'AUTHOR')[0].innerText
-                  .replace('Granada',''),
-                titular: Array.from(heading)
-                  .filter(e => e.tagName === 'H1')
-                  .map(e => e.innerText).toString(),
-                subtitulo: Array.from(heading)
-                  .filter(e => e.tagName === 'H2')
-                  .map(e => e.innerText).toString(),
-                img: Array.from(Array.from(heading)
-                  .filter(e => e.tagName === 'FIGURE')[0].children)
-                  .filter(c => c.tagName === 'DIV')[0].children[0].currentSrc,
-                text: Array.from(htmlParagraphs)
-                  .map(p => p.innerText).join('\n').toString(),
-                tags: Array.from(Array.from(document.querySelectorAll('.voc-topics'))[0].children)
-                  .filter(e => e.tagName !== 'H3').map(a => a.innerText)
+
+              let obj = {}
+
+              if (document.querySelectorAll('.voc-static-404').length <= 0) {
+
+                obj.url = document.URL
+
+                // Es el último rediseño
+                if (Array.from(document.querySelectorAll('.voc-author-info'))[0]) {
+
+                  obj.age = 0
+
+                  let autorFecha = Array.from(document.querySelectorAll('.voc-author-info'))[0].children
+
+                  obj.fecha = Array.from(autorFecha).filter(e => e.tagName === 'TIME')[0].innerText.trim()
+
+                  if (Array.from(autorFecha).filter(e => e.tagName === 'AUTHOR').length > 0) {
+                    obj.autor = Array.from(autorFecha)
+                      .filter(e => e.tagName === 'AUTHOR')[0].innerText
+                      .replace('Granada', '')
+                      .replace('GRANADA', '')
+                      .trim()
+                  } else {
+                    obj.autor = ''
+                  }
+
+                  let heading = Array.from(document.querySelectorAll('.voc-detail-header'))[0].children
+
+                  let htmlParagraphs = Array.from(Array.from(document.querySelectorAll('div.voc-detail'))
+                    .map(d => d.getElementsByTagName('p'))[0])
+                    .filter(p => !p.id && !p.classList.contains('vjs-control-text'))
+                  
+                  obj.titular = Array.from(heading).filter(e => e.tagName === 'H1').map(e => e.innerText).toString()
+
+                  obj.subtitulo = Array.from(heading).filter(e => e.tagName === 'H2').map(e => e.innerText).toString()
+
+                  if (Array.from(heading).filter(e => e.tagName === 'FIGURE')[0]) {
+                    let img = Array.from(Array.from(heading)
+                      .filter(e => e.tagName === 'FIGURE')[0].children)
+                      .filter(c => c.tagName === 'DIV')[0].children[0].currentSrc
+                    if (img !== undefined) {
+                      obj.img = img
+                    } else {
+                      obj.img = ''
+                    }
+                  } else {
+                    obj.img = ''
+                  }
+
+                  obj.text = Array.from(htmlParagraphs).map(p => p.innerText).join('\n').toString()
+
+                  if (Array.from(document.querySelectorAll('.voc-topics'))[0]) {
+                    let tags = Array.from(Array.from(document.querySelectorAll('.voc-topics'))[0].children)
+                      .filter(e => e.tagName !== 'H3').map(a => a.innerText)
+                    if (tags !== undefined) {
+                      obj.tags = tags
+                    } else {
+                      obj.tags = []
+                    }
+                  } else {
+                    obj.tags = []
+                  }
+                }
+
+                // Es el diseño anterior al último
+                else if (Array.from(document.querySelectorAll('.span12 h1'))[0]) {
+
+                  obj.age = 1
+
+                  if (Array.from(document.querySelectorAll('.span12 h1'))[0]) {
+                    obj.titular = Array.from(document.querySelectorAll('.span12 h1'))[0].innerText.trim()
+                  }
+
+                  if (Array.from(document.querySelectorAll('.subhead h2'))[0]) {
+                    obj.subtitulo = Array.from(document.querySelectorAll('.subhead h2'))[0].innerText.trim()
+                  }
+
+                  if (Array.from(document.querySelectorAll('.autor .avatar'))[0]) {
+                    obj.autor = Array.from(document.querySelectorAll('.autor .avatar'))[0].innerText.trim()
+                  }
+
+                  if (Array.from(document.querySelectorAll('.date'))[0]) {
+                    obj.fecha = Array.from(Array.from(document.querySelectorAll('.date'))[0].children)[0].innerText.trim().replace('\n', ' ')
+                  }
+
+                  if (document.querySelectorAll('.contenido p').length > 0) {
+                    obj.text = Array.from(document.querySelectorAll('.contenido p')).map(p => p.innerText.trim()).join('\n')
+                  }
+
+                  if (document.querySelectorAll('.photo').length > 0) {
+                    obj.img = document.querySelectorAll('.photo img')[0].currentSrc.trim()
+                  }
+
+                  if (document.querySelectorAll('.temasTopic li').length > 0) {
+                    obj.tags = Array.from(document.querySelectorAll('.temasTopic li')).map(li => li.innerText.replace(',', '').trim())
+                  }
+                }
+
+                // Es el diseño más viejo
+                else if (Array.from(document.querySelectorAll('h1.headline'))[0]) {
+
+                  obj.age = 2
+
+                  if (document.querySelectorAll('h1.headline').length > 0) {
+                    obj.titular = document.querySelector('h1.headline').innerText.trim()
+                  }
+
+                  if (document.querySelectorAll('h2.subhead').length > 0) {
+                    obj.subtitulo = document.querySelector('h2.subhead').innerText.trim()
+                  }
+
+                  if (document.querySelectorAll('div.date').length > 0) {
+                    let autorFecha = document.querySelector('div.date')
+                    obj.fecha = autorFecha.innerText.split('-')[0].concat(autorFecha.innerText.split('-')[1]).replace('  ', ' ').replaceAll('.', '/').trim()
+                    let autor = autorFecha.innerText.split('-')[autorFecha.innerText.split('-').length - 1].split('|')[0].trim()
+                  }
+
+                  if (document.querySelectorAll('#story-texto').length > 0) {
+                    obj.text = Array.from(document.querySelector('#story-texto').children).map(p => p.innerText.trim()).join('\n')
+                  }
+
+                  if (Object.keys(obj).length > 2) {
+                    obj.img = ''
+                    obj.tags = []
+                  }
+
+                }
+
+                return Object.keys(obj).length > 2 ? obj : null
               }
+
             })
-            console.log(`Added article: ${article.titular} (${article.fecha})`)
-            articles.push(article)
+
+            if (article) {
+              articles.push(article)
+            }
           }
           resolve(articles)
           await tab.close()
@@ -141,15 +267,17 @@ const parse = urls => {
         })
     })
   } catch (error) {
-    throw new Error(error)
+    console.error(`Error scraping single article: ${error}`)
   }
 }
 
 const parseDatesAndTitleCase = articles => new Promise((resolve, reject) => {
   resolve(articles.map(a => {
-    let date = moment(a.fecha, 'MMMM Do YYYY, h:mm:ss').toDate()
-    a.date = date.setHours(date.getHours() + 2)
+    // TODO: adaptar la construcción del objeto fecha a las particularidades de los tres rediseños
+    // let date = moment(a.fecha, 'MMMM Do YYYY, h:mm:ss').toDate()
+    // a.date = date.setHours(date.getHours() + 2)
     a.autor = titleCase(a.autor)
+    a.titular = titleClase(a.titular)
     return a
   }))
 })
@@ -172,7 +300,7 @@ const persist = async articles => {
       process.exit(0) 
     }, 10000)
   } catch (error) {
-    throw new Error(error)
+    console.error(`Error persisting to database: ${error}`)
   }
 }
 
@@ -194,14 +322,34 @@ const saveToDb = async articles => {
   return
 }
 
+const exportUrls = urls => {
+  return new Promise((resolve, reject) => {
+    console.log('exporting to csv')
+    stringify([].concat(urls.join('\n')), (error, output) => {
+      if (error) {
+        console.log(`Error writing CSV: ${error}`)
+      }
+      try {
+        fs.writeFileSync(
+          path.join(__dirname, './../urls.csv'),
+          output
+        )
+        resolve(urls)        
+      } catch (error) {
+        console.log(`Error writing CSV: ${error}`)
+      }
+    })
+  })
+}
+
 async function scrape() {
   getPages()
     .then(pages => generateUrlsFor(pages))
     .then(pages => getNewsUrls(pages))
+    .then(urls => exportUrls(urls))
     .then(urls => parse(urls))
     .then(articles => parseDatesAndTitleCase(articles))
     .then(articles => persist(articles))
-  
 }
 
 scrape()

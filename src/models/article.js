@@ -7,7 +7,9 @@ const articleSchema = new mongoose.Schema({
   titular: String,
   subtitulo: String,
   text: String,
-  tags: Array
+  tags: Array,
+  url: String,
+  age: Number
 })
 
 const Article = mongoose.model('Article', articleSchema)

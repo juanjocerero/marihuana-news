@@ -9,9 +9,11 @@
     "babel-preset-env": "^1.6.0"
   },
   "scripts": {
-    "scrape": "babel-node src/scrape.js"
+    "scrape": "babel-node src/scrape.js",
+    "scrape-one": "babel-node src/scrape-one.js"
   },
   "dependencies": {
+    "csv-stringify": "^1.0.4",
     "jquery": "^3.2.1",
     "lodash": "^4.17.4",
     "moment": "^2.19.1",
