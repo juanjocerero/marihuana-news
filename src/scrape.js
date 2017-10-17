@@ -197,8 +197,8 @@ const saveToDb = async articles => {
 async function scrape() {
   getPages()
     .then(pages => generateUrlsFor(pages))
-    .then(pages => getNewsUrls(pages.slice(0, 1)))
-    .then(urls => parse(urls.slice(0,1)))
+    .then(pages => getNewsUrls(pages))
+    .then(urls => parse(urls))
     .then(articles => parseDatesAndTitleCase(articles))
     .then(articles => persist(articles))
   
