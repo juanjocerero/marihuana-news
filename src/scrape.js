@@ -213,7 +213,7 @@ const parse = urls => {
                     obj.text = Array.from(document.querySelectorAll('.contenido p')).map(p => p.innerText.trim()).join('\n')
                   }
 
-                  if (document.querySelectorAll('.photo').length > 0) {
+                  if (document.querySelectorAll('.photo').length > 0 && document.querySelectorAll('.photo img').length > 0) {
                     obj.img = document.querySelectorAll('.photo img')[0].currentSrc.trim()
                   }
 
