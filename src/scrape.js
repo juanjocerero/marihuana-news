@@ -239,7 +239,7 @@ const parse = urls => {
                   if (document.querySelectorAll('div.date').length > 0) {
                     let autorFecha = document.querySelector('div.date')
                     obj.fecha = autorFecha.innerText.split('-')[0].concat(autorFecha.innerText.split('-')[1]).replace('  ', ' ').replaceAll('.', '/').trim()
-                    let autor = autorFecha.innerText.split('-')[autorFecha.innerText.split('-').length - 1].split('|')[0].trim()
+                    obj.autor = autorFecha.innerText.split('-')[autorFecha.innerText.split('-').length - 1].split('|')[0].trim()
                   }
 
                   if (document.querySelectorAll('#story-texto').length > 0) {
