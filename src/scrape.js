@@ -274,11 +274,18 @@ const parse = urls => {
 
 const parseDatesAndTitleCase = articles => new Promise((resolve, reject) => {
   resolve(articles.map(a => {
-    // TODO: adaptar la construcción del objeto fecha a las particularidades de los tres rediseños
-    // let date = moment(a.fecha, 'MMMM Do YYYY, h:mm:ss').toDate()
-    // a.date = date.setHours(date.getHours() + 2)
+    if (a.age === 0) {
+      let date = moment(a.fecha, 'MMMM Do YYYY, h:mm:ss').format()
+      a.date = date
+    } else if (a.age === 1) {
+      let date = moment(a.fecha, 'DD MMMM YYYY h:mm').format()
+      a.date = date
+    } else if (a.age === 2) {
+      let date = moment(a.fecha, 'DD/MM/YY h:mm').format()
+      a.date = date
+    }
     a.autor = titleCase(a.autor)
-    a.titular = titleClase(a.titular)
+    a.titular = titleCase(a.titular)
     return a
   }))
 })

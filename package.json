@@ -10,7 +10,8 @@
   },
   "scripts": {
     "scrape": "babel-node src/scrape.js",
-    "scrape-one": "babel-node src/scrape-one.js"
+    "scrape-one": "babel-node src/scrape-one.js",
+    "test-time": "babel-node src/test-time.js"
   },
   "dependencies": {
     "csv-stringify": "^1.0.4",
