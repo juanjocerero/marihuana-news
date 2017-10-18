@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 
 const articleSchema = new mongoose.Schema({
   fecha: String,
-  date: Date,
+  date: String,
   autor: String,
   titular: String,
   subtitulo: String,
