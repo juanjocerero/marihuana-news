@@ -276,10 +276,10 @@ const parseDatesAndTitleCase = articles => new Promise((resolve, reject) => {
   resolve(articles.map(a => {
     if (a.age === 0) {
       let date = moment(a.fecha, 'MMMM Do YYYY, h:mm:ss').toDate()
-      a.date = date
+      a.date = date.setHours(date.getHours() + 2)
     } else if (a.age === 1) {
       let date = moment(a.fecha, 'DD MMMM YYYY h:mm').toDate()
-      a.date = date
+      a.date = date.setHours(date.getHours() + 2)
     } else if (a.age === 2) {
       let date = moment(a.fecha, 'DD/MM/YY h:mm').toDate()
       a.date = date
